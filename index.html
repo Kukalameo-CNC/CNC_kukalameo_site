@@ -21,7 +21,7 @@ window.tgApi=api;
 const snap=()=>{const d={};for(const k of KEYS){const v=ls.getItem(k);if(v!=null)d[k]=v}return d};
 async function push(){if(busy){again=true;return}busy=true;const v0=ver;
 try{badge('⟳ Сохраняю в Telegram…');const ts=Date.now(),r=await api('/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts,data:snap()})});
-if(!r.ok)throw new Error((await r.text()).slice(0,140)||('HTTP '+r.status));rawSet.call(ls,'cnc_ts',String(ts));if(v0===ver)ls.removeItem('cnc_dirty');badge('✓ Сохранено в Telegram',2500)}
+if(!r.ok){let t=await r.text();try{const e=JSON.parse(t);t=e.hint||(e.telegram&&e.telegram.description)||t}catch(x){}throw new Error(t.slice(0,200)||('HTTP '+r.status))}rawSet.call(ls,'cnc_ts',String(ts));if(v0===ver)ls.removeItem('cnc_dirty');badge('✓ Сохранено в Telegram',2500)}
 catch(e){badge('⚠ Не сохранено в Telegram: '+(e&&e.message||e))}
 finally{busy=false;if(again){again=false;push()}}}
 const sched=()=>{clearTimeout(timer);timer=setTimeout(push,2000)};
@@ -557,7 +557,7 @@ const TGA=t=>`<a class="btn g2 cp" style="padding:7px 10px;font-size:11px;text-d
 async function tgSend(blob,name,cap){if(blob.size>50*1048576)throw new Error('«'+name+'» больше 50 МБ — лимит Telegram Bot API');
 const fd=new FormData();fd.append('caption',String(cap).slice(0,1000));fd.append('document',blob,name);
 const r=await tgApi('/send',{method:'POST',body:fd}),j=await r.json().catch(()=>null);
-if(!j||!j.ok)throw new Error((j&&j.description)||('HTTP '+r.status));return{m:j.result.message_id,f:j.result.document.file_id}}
+if(!j||!j.ok)throw new Error((j&&(j.hint||(j.telegram&&j.telegram.description)||j.description))||('HTTP '+r.status));return{m:j.result.message_id,f:j.result.document.file_id}}
 async function tgGet(fid){const r=await tgApi('/file?fid='+encodeURIComponent(fid));if(!r.ok)throw new Error('HTTP '+r.status);return r.blob()}
 /* локальная копия (IndexedDB) → если её нет, скачиваем из Telegram (лимит getFile — 20 МБ) и кладём обратно в кэш */
 const fgetT=async(p,k)=>{let b;try{b=await fget(k)}catch(e){}if(b)return b;const t=p&&p.tg&&p.tg[k];if(!t)return;try{b=await tgGet(t.f);try{await fput(k,b)}catch(e){}}catch(e){}return b};
